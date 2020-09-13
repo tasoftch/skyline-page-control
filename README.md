@@ -1,2 +1,2 @@
-# php-dependency-injection
-PHP Dependency Injection library in collaboration with service manager
+# Skyline Page Control
+The dynamic page control package is a light administration to control given page's contents.
