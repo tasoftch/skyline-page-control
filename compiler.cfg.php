@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * BSD 3-Clause License
  *
  * Copyright (c) 2019, TASoft Applications
@@ -32,37 +32,19 @@
  *
  */
 
-namespace Skyline\PageControl\Controller;
+use Skyline\Compiler\Factory\AbstractExtendedCompilerFactory;
+use Skyline\Compiler\Predef\ConfigurationCompiler;
+use Skyline\Compiler\Predef\OrderedConfigurationCompiler;
+use Skyline\PageControl\Compiler\DynamicPlaceholderCompiler;
+use Skyline\Render\Compiler\ClearCompiledTemplate;
+use Skyline\Render\Compiler\ContextAnnotationCompiler;
+use Skyline\Render\Compiler\FindTemplatesCompiler;
 
-
-use Skyline\Application\Controller\AbstractActionController;
-use Skyline\PageControl\Placeholder\DynamicPlaceholder;
-
-/**
- * Subclass this action controller by your own classes for routing or security and call the renderPage method to deliver dynamic pages
- * @package Skyline\PageControl\Controller
- */
-abstract class AbstractPageController extends AbstractActionController
-{
-	/**
-	 * Renders all data model, configurations and templates to deliver the defined page.
-	 *
-	 * @param $pageName
-	 * @param $info
-	 */
-	protected function renderPage($pageName, $info) {
-		DynamicPlaceholder::setActionController($this);
-
-
-
-		DynamicPlaceholder::setActionController(NULL);
-	}
-
-	/**
-	 * @param DynamicPlaceholder $placeholder
-	 * @return string
-	 */
-	public function renderDynamicContents(DynamicPlaceholder $placeholder): string {
-
-	}
-}
+return [
+	'page-control' => [
+		AbstractExtendedCompilerFactory::COMPILER_CLASS_KEY => DynamicPlaceholderCompiler::class,
+		AbstractExtendedCompilerFactory::COMPILER_DEPENDENCIES_KEY => [
+			'find-templates'
+		]
+	]
+];

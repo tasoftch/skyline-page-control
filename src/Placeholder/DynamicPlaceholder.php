@@ -32,37 +32,71 @@
  *
  */
 
-namespace Skyline\PageControl\Controller;
+namespace Skyline\PageControl\Placeholder;
 
 
-use Skyline\Application\Controller\AbstractActionController;
-use Skyline\PageControl\Placeholder\DynamicPlaceholder;
+use Skyline\PageControl\Controller\AbstractPageController;
 
-/**
- * Subclass this action controller by your own classes for routing or security and call the renderPage method to deliver dynamic pages
- * @package Skyline\PageControl\Controller
- */
-abstract class AbstractPageController extends AbstractActionController
+class DynamicPlaceholder extends AbstractEditablePlaceholder
 {
+	/** @var AbstractPageController|null */
+	protected static $actionController;
+
+	/** @var AbstractPageController|null */
+	protected $controller;
+
+	/** @var int  */
+	protected $options = 0;
+
+	// Control the access
+	const OPTION_ADMIN_ONLY = 1<<0;
+	const OPTION_ROOT_ONLY = 1<<1;
+	const OPTION_EDITOR_ONLY = 1<<2;
+
+
+
 	/**
-	 * Renders all data model, configurations and templates to deliver the defined page.
-	 *
-	 * @param $pageName
-	 * @param $info
+	 * @return AbstractPageController|null
 	 */
-	protected function renderPage($pageName, $info) {
-		DynamicPlaceholder::setActionController($this);
-
-
-
-		DynamicPlaceholder::setActionController(NULL);
+	public static function getActionController(): ?AbstractPageController
+	{
+		return self::$actionController;
 	}
 
 	/**
-	 * @param DynamicPlaceholder $placeholder
-	 * @return string
+	 * @param AbstractPageController|null $actionController
 	 */
-	public function renderDynamicContents(DynamicPlaceholder $placeholder): string {
+	public static function setActionController(?AbstractPageController $actionController): void
+	{
+		self::$actionController = $actionController;
+	}
 
+	/**
+	 * @return AbstractPageController|null
+	 */
+	public function getController(): ?AbstractPageController
+	{
+		return $this->controller;
+	}
+
+	/**
+	 * DynamicPlaceholder constructor.
+	 * @param string $name
+	 * @param string $description
+	 * @param int $options
+	 */
+	public function __construct(string $name, string $description = "", int $options = 0)
+	{
+		parent::__construct($name);
+		$this->setDescription($description);
+		$this->options = $options;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getOptions(): int
+	{
+		return $this->options;
 	}
 }

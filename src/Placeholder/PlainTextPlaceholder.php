@@ -32,37 +32,28 @@
  *
  */
 
-namespace Skyline\PageControl\Controller;
+namespace Skyline\PageControl\Placeholder;
 
-
-use Skyline\Application\Controller\AbstractActionController;
-use Skyline\PageControl\Placeholder\DynamicPlaceholder;
-
-/**
- * Subclass this action controller by your own classes for routing or security and call the renderPage method to deliver dynamic pages
- * @package Skyline\PageControl\Controller
- */
-abstract class AbstractPageController extends AbstractActionController
+class PlainTextPlaceholder extends AbstractEditablePlaceholder
 {
 	/**
-	 * Renders all data model, configurations and templates to deliver the defined page.
-	 *
-	 * @param $pageName
-	 * @param $info
+	 * PlainTextPlaceholder constructor.
+	 * @param string $name
+	 * @param string $text
 	 */
-	protected function renderPage($pageName, $info) {
-		DynamicPlaceholder::setActionController($this);
-
-
-
-		DynamicPlaceholder::setActionController(NULL);
+	public function __construct(string $name, string $text = "")
+	{
+		parent::__construct($name);
+		$this->setText($text);
 	}
 
 	/**
-	 * @param DynamicPlaceholder $placeholder
-	 * @return string
+	 * @param string $contents
+	 * @return static
 	 */
-	public function renderDynamicContents(DynamicPlaceholder $placeholder): string {
-
+	public function setText(string $text)
+	{
+		$this->contents = htmlspecialchars($text);
+		return  $this;
 	}
 }

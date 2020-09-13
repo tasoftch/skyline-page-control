@@ -19,6 +19,8 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^6",
-    "skyline-admin/pdo-initialisation": "^0.9"
+    "skyline-admin/pdo-initialisation": "^0.9",
+    "skyline/binary": "^0.8",
+    "skyline/compiler": "^0.8"
   }
 }
