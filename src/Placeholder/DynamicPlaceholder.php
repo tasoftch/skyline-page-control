@@ -42,9 +42,6 @@ class DynamicPlaceholder extends AbstractEditablePlaceholder
 	/** @var AbstractPageController|null */
 	protected static $actionController;
 
-	/** @var AbstractPageController|null */
-	protected $controller;
-
 	/** @var int  */
 	protected $options = 0;
 
@@ -72,14 +69,6 @@ class DynamicPlaceholder extends AbstractEditablePlaceholder
 	}
 
 	/**
-	 * @return AbstractPageController|null
-	 */
-	public function getController(): ?AbstractPageController
-	{
-		return $this->controller;
-	}
-
-	/**
 	 * DynamicPlaceholder constructor.
 	 * @param string $name
 	 * @param string $description
@@ -90,6 +79,26 @@ class DynamicPlaceholder extends AbstractEditablePlaceholder
 		parent::__construct($name);
 		$this->setDescription($description);
 		$this->options = $options;
+
+		if($cnt = static::getActionController()) {
+			$self = $this;
+			$this->contents = function() use ($cnt, $self) {
+				return $cnt->renderDynamicContents($self);
+			};
+		}
+	}
+
+	public function __toString(): string
+	{
+		if($cnt = static::getActionController())
+			$cnt->pushPlaceholder($this);
+
+		$string = parent::__toString();
+
+		if($cnt = static::getActionController())
+			$cnt->popPlaceholder();
+
+		return $string;
 	}
 
 	/**

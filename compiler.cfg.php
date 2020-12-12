@@ -43,8 +43,13 @@ use Skyline\Render\Compiler\FindTemplatesCompiler;
 return [
 	'page-control' => [
 		AbstractExtendedCompilerFactory::COMPILER_CLASS_KEY => DynamicPlaceholderCompiler::class,
+		AbstractExtendedCompilerFactory::COMPILER_ARGUMENTS_KEY => [
+			'file-name' => 'page-control.config.php',
+			'exclude-magic' => true
+		],
 		AbstractExtendedCompilerFactory::COMPILER_DEPENDENCIES_KEY => [
-			'find-templates'
+			'find-templates',
+			"find-html-templates"
 		]
 	]
 ];

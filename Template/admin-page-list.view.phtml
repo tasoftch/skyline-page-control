@@ -1,0 +1,422 @@
+<?php
+
+use Skyline\Render\Context\DefaultRenderContext;
+/**
+ * @require Application
+ * @title Administration
+ * @description Bearbeiten Sie Ihre Webseite bequem online mit Skyline CMS Ready
+ * @require DatePicker
+ * @require TimePicker
+ *
+ * @var DefaultRenderContext $this
+ * @var \Skyline\HTML\Form\FormElement $FORM
+ * @var array $REPRESENTATIONS
+ * @var $CUSTOM
+ */
+?>
+<style type="text/css">
+    .control-row {
+        display: none;
+    }
+</style>
+
+<script type="application/javascript">
+    var SELECTION = {};
+    var CURRENT_CONDITION = false;
+
+    Skyline.Translate.extendDefaults({
+        'delete-row': "Do you really want to delete the selected row?",
+        "condition-for": "Condition for @",
+        "on": "On",
+        "off": "Off",
+        "OK": "OK",
+        "cancel": "Cancel",
+        "save": "Save",
+        "date": "Date",
+        "time": "Time",
+        "visible-from": "Visible From",
+        "visible-from-d": "Specify date and time from when the placeholder should be visible.",
+        "visible-until": "Visible Until",
+        "visible-until-d": "Specify date and time from when the placeholder should be visible.",
+        "visible-hosts": "Restricted Hosts",
+        "visible-hosts-d": "Specify any accepted client request by its ip address.",
+        "plh-1": "eg: 192.168.1.2",
+        "plh-2": "your: <?=$_SERVER["REMOTE_ADDR"]?>"
+    })
+
+    function select_row(table, row) {
+        var trc = $("#table-"+table+" tr[data-row]").removeClass("table-primary").length;
+        $("#table-"+table+" tr[data-row='"+row+"']").addClass("table-primary");
+        SELECTION[table] = {s:row,c:trc};
+        $("#table-"+table+" button.q").attr("disabled", 'disabled');
+        if(row) {
+            $("#table-"+table+" button.q").attr("disabled", false);
+
+            if(row == 1)
+                $("#table-"+table+" button.mu").attr("disabled", 'disabled');
+            if(row == trc)
+                $("#table-"+table+" button.md").attr("disabled", 'disabled');
+        }
+    }
+
+    function add_mutation(table, row, action) {
+        $("form").append("<input type='hidden' name='mutations[]' value='"+table+":"+ row +":"+action+"' />");
+    }
+
+    function get_row(table) {
+        return SELECTION[table].s * 1;
+    }
+
+    function get_count(table) {
+        if(!SELECTION[table])
+            SELECTION[table] = {c:$("#table-"+table+" tr[data-row]").length};
+        return SELECTION[table].c * 1;
+    }
+
+    function delete_row(table) {
+        if(confirm(Skyline.Translate('delete-row'))) {
+            var row = get_row(table);
+            add_mutation(table, row, 'del');
+            var $row = $("#table-"+table+" tr[data-row='"+row+"']");
+            $row.remove();
+
+            $("#table-"+table+" tr[data-row]").each(function() {
+                if($(this).getRow() > row)
+                    $(this).increment(-1);
+            });
+        }
+    }
+
+    function move_row_up(table) {
+        var row = get_row(table);
+        if(row > 1) {
+            add_mutation(table, row, 'up');
+            var $row = $("#table-"+table+" tr[data-row='"+row+"']");
+            var $rowp = $("#table-"+table+" tr[data-row='"+(row-1)+"']");
+
+            $row.increment(-1);
+            $rowp.increment(1);
+
+            $row.insertBefore($rowp);
+            select_row(table, row-1);
+        }
+    }
+
+    function move_row_down(table) {
+        var row = get_row(table);
+        if(row < get_count(table)) {
+            add_mutation(table, row, 'dwn');
+            var $row = $("#table-"+table+" tr[data-row='"+row+"']");
+            var $rowp = $("#table-"+table+" tr[data-row='"+(row+1)+"']");
+
+            $row.increment(1);
+            $rowp.increment(-1);
+
+            $row.insertAfter($rowp);
+            select_row(table, row+1);
+        }
+    }
+
+    function add_row(table) {
+        var rowHTML = $("#table-"+table+" tr.control-row").html();
+        var c = get_count(table) + 1;
+        add_mutation(table, c, 'add');
+
+        var $row = $("<tr data-row='"+c+"' onclick='select_row("+table+", $(this).attr(\"data-row\"))'>");
+        $row.html(rowHTML);
+
+        $row.setRow(c);
+        $("#table-"+table+" tbody").append($row);
+
+        select_row(table, c);
+    }
+
+    $(function() {
+        $.fn.getRow = function() {
+            return this.attr("data-row") * 1;
+        }
+        $.fn.increment = function(by) {
+            this.find("[id]").each(function() {
+                if(/^t\d+r\d+c\d+$/i.test(this.id)) {
+                    var rc = /^t(\d+)r(\d+)c(\d+)/i.exec(this.id);
+                    this.id = this.name = "t"+rc[1]+"r" + ((rc[2]*1) + by) + "c" + rc[3];
+                }
+            })
+            this.attr('data-row', (this.attr('data-row')*1) + by);
+        }
+        $.fn.setRow = function(row) {
+            this.find("[id]").each(function() {
+                if(/^t\d+r\d+c\d+$/i.test(this.id)) {
+                    var rc = /^t(\d+)r\d+c(\d+)/i.exec(this.id);
+                    this.id = this.name = "t"+rc[1]+"r" + row + "c" + rc[2];
+                }
+            })
+            this.attr('data-row', row);
+        }
+
+        $("#cond-date-from").datepicker('init', {
+            autoOpen: false,
+            autoClose: false,
+            autoUpdate: true,
+            format: "ddd, d. mmm yyyy",
+            mirror: $("#cond-date-from-q"),
+            mirrorFormat: "yyyy-mm-dd",
+            defaultDate: new Date(),
+            setDefaultDate: true
+        })
+        $("#cond-time-from").timepicker('init', {
+            autoOpen: false,
+            autoClose: false,
+            autoUpdate: true,
+            twelveHour: false,
+            mirror: $("#cond-time-from-q"),
+            mirrorFormat: "G:m:s",
+            format: "G:m",
+            defaultTime: "0:00"
+        })
+
+        $("#cond-date-until").datepicker('init', {
+            autoOpen: false,
+            autoClose: false,
+            autoUpdate: true,
+            format: "ddd, d. mmm yyyy",
+            mirror: $("#cond-date-until-q"),
+            mirrorFormat: "yyyy-mm-dd",
+            defaultDate: new Date(),
+            setDefaultDate: true
+        })
+        $("#cond-time-until").timepicker('init', {
+            autoOpen: false,
+            autoClose: false,
+            autoUpdate: true,
+            twelveHour: false,
+            mirror: $("#cond-time-until-q"),
+            mirrorFormat: "G:m:s",
+            format: "G:m",
+            defaultTime: "0:00"
+        })
+    })
+
+    function open_condition_panel(placeholder) {
+        var cond = placeholder.val();
+        cond = cond.split("|");
+
+        let p;
+        if((p = /^(\d+-\d+-\d+)\s+(\d+:\d+):\d+$/.exec(cond[0]))) {
+            $("#cond-date-from").val(p[1]).datepicker('update');
+            $("#cond-time-from").val(p[2]).timepicker('update');
+        } else {
+            $("#cond-date-from").datepicker('instance').setDate(new Date());
+            $("#cond-date-from").datepicker('instance').setInputValue();
+        }
+
+        if((p = /^(\d+-\d+-\d+)\s+(\d+:\d+):\d+$/.exec(cond[1]))) {
+            $("#cond-date-until").val(p[1]).datepicker('update');
+            $("#cond-time-until").val(p[2]).timepicker('update');
+        }
+
+        let options = cond[2] * 1;
+
+        $("#cond-from-visible")[0].checked = options & 1 ? 'checked' : false;
+        $("#cond-until-visible")[0].checked =  options & 2 ? 'checked' : false;
+        $("#cond-hosts-visible")[0].checked = options & 4 ? 'checked' : false;
+
+        var ref = placeholder.attr("data-ref");
+        var $input = $("#"+ref);
+
+        var name = $("label[for='"+ref+"']").text();
+        var $mtitle = $("#condition-modal-title");
+        $mtitle.text( $mtitle.translated().replace('@', name) );
+
+        for(let e=3;e<7;e++) {
+            if(cond[e] !== undefined)
+                $("#cond-host-"+(e-2)).val(cond[e]);
+        }
+
+        CURRENT_CONDITION = placeholder;
+
+        $("#condition-modal").modal("show");
+    }
+
+    function apply_condition() {
+        if(CURRENT_CONDITION) {
+            var options = 1<<7;
+            if($("#cond-from-visible")[0].checked)
+                options|=1;
+            if($("#cond-until-visible")[0].checked)
+                options|=2;
+            if($("#cond-hosts-visible")[0].checked)
+                options|=4;
+
+            let condition = [
+                options & 1 ? ($("#cond-date-from-q").val() + " " + $("#cond-time-from-q").val() ): "",
+                options & 2 ? ($("#cond-date-until-q").val() + " " + $("#cond-time-until-q").val() ) : "",
+                options
+            ];
+
+            if(options & 4) {
+                for(let e=1;e<=4;e++) {
+                    let v = $("#cond-host-"+e).val();
+                    if(v)
+                        condition.push(v);
+                }
+            }
+            console.log(condition.join("|"));
+            CURRENT_CONDITION.val(condition.join("|"));
+        }
+        $("#condition-modal").modal("hide");
+    }
+</script>
+
+<?php
+$FORM->manualBuildForm(function() use ($FORM, $REPRESENTATIONS, $CUSTOM) {
+
+    /** @var \Skyline\PageControl\FormBuilder\Representation\RepresentationInterface $REPRESENTATION */
+	foreach ($REPRESENTATIONS as $REPRESENTATION) {
+        $REPRESENTATION->represent($FORM);
+    }
+
+
+	if($CUSTOM)
+	    $this->renderSubTemplate($CUSTOM);
+    ?>
+
+    <hr class="my-3">
+    <div class="d-flex justify-content-center align-content-center">
+        <button class="btn btn-lg btn-outline-success" name="apply" data-trans="save">
+            Save
+        </button>
+    </div>
+
+    <?php
+})
+?>
+<div class="modal fade" id="condition-modal" tabindex="-1" role="dialog" aria-labelledby="condition-modal-title" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="condition-modal-title" data-trans="condition-for">Condition for @</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" data-trans="condition-desc">Conditions can be used to decide on request if the placeholder should be rendered or not.</p>
+                <hr>
+                <div class="form-group row mb-0">
+                    <div class="col-md-3 col-form-label" data-trans="visible-from">Visible From</div>
+                    <div class="col-md-9 mb-3">
+                        <div class="switch pb-0">
+                            <label class="mb-0">
+                                <span data-trans="off">Off</span>
+                                <input type="checkbox" id="cond-from-visible" value="1">
+                                <span class="lever"></span>
+                                <span data-trans="on">On</span>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted" data-trans="visible-from-d"></small>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="cond-date-from" class="col-md-3 col-form-label" data-trans="date">Date</label>
+                    <div class="col-md-9">
+                        <input type="hidden"  id="cond-date-from-q">
+                        <div class="input-group">
+                            <input type="date" class="form-control" id="cond-date-from">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-primary" onclick="$('#cond-date-from').datepicker('open');">...</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="cond-time-from" class="col-md-3 col-form-label" data-trans="time">Time</label>
+                    <div class="col-md-9">
+                        <input type="hidden" id="cond-time-from-q">
+                        <div class="input-group">
+                            <input type="date" class="form-control" id="cond-time-from">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-primary" onclick="$('#cond-time-from').timepicker('open');">...</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="form-group row mb-0">
+                    <div class="col-md-3 col-form-label" data-trans="visible-until">Visible Until</div>
+                    <div class="col-md-9 mb-3">
+                        <div class="switch pb-0">
+                            <label class="mb-0">
+                                <span data-trans="off">Off</span>
+                                <input type="checkbox" id="cond-until-visible" value="1">
+                                <span class="lever"></span>
+                                <span data-trans="on">On</span>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted" data-trans="visible-until-d"></small>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="cond-date-until" class="col-md-3 col-form-label" data-trans="date">Date</label>
+                    <div class="col-md-9">
+                        <input type="hidden"  id="cond-date-until-q">
+                        <div class="input-group">
+                            <input type="date" class="form-control" id="cond-date-until">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-primary" onclick="$('#cond-date-until').datepicker('open');">...</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="cond-time-until" class="col-md-3 col-form-label" data-trans="time">Time</label>
+                    <div class="col-md-9">
+                        <input type="hidden" id="cond-time-until-q">
+                        <div class="input-group">
+                            <input type="date" class="form-control" id="cond-time-until">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-outline-primary" onclick="$('#cond-time-until').timepicker('open');">...</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="form-group row mb-0">
+                    <div class="col-md-3 col-form-label" data-trans="visible-hosts"></div>
+                    <div class="col-md-9 mb-3">
+                        <div class="switch pb-0">
+                            <label class="mb-0">
+                                <span data-trans="off">Off</span>
+                                <input type="checkbox" id="cond-hosts-visible" value="1">
+                                <span class="lever"></span>
+                                <span data-trans="on">On</span>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted" data-trans="visible-hosts-d"></small>
+                    </div>
+                </div>
+                <?php
+                for($e=1;$e<=4;$e++) {
+                    ?>
+                    <div class="form-group row">
+                        <label for="cond-host-<?=$e?>" class="col-md-3 col-form-label">IP <?=$e?></label>
+                        <div class="col-md-9">
+                            <input type="text" class="form-control" id="cond-host-<?=$e?>" data-trans="plh-<?=$e?>">
+                        </div>
+                    </div>
+                    <?php
+                }
+                ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-trans="cancel">Close</button>
+                <button type="button" class="btn btn-primary" onclick="apply_condition()" data-trans="OK">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
